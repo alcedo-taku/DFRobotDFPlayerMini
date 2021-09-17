@@ -5,13 +5,9 @@
  *
  * @copyright	[DFRobot]( http://www.dfrobot.com ), 2016
  * @copyright	GNU Lesser General Public License
- *
- * @author [Angelo](Angelo.qiao@dfrobot.com)
- * @version  V1.0.3
- * @date  2016-12-07
  */
 
-#include "Arduino.h"
+#include "usart.h"
 
 #ifndef DFRobotDFPlayerMini_cpp
     #define DFRobotDFPlayerMini_cpp
@@ -56,6 +52,7 @@
 #define FileMismatch 6
 #define Advertise 7
 
+// 送信するデータの入っている配列の要素
 #define Stack_Header 0
 #define Stack_Version 1
 #define Stack_Length 2
@@ -66,7 +63,9 @@
 #define Stack_End 9
 
 class DFRobotDFPlayerMini {
-  Stream* _serial;
+private:
+//  Stream* _serial;
+  UART_HandleTypeDef *_huart;
   
   unsigned long _timeOutTimer;
   unsigned long _timeOutDuration = 500;
@@ -97,7 +96,8 @@ class DFRobotDFPlayerMini {
   
   uint8_t device = DFPLAYER_DEVICE_SD;
   
-  public:
+public:
+  void Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2);
   
   uint8_t _handleType;
   uint8_t _handleCommand;
@@ -110,11 +110,13 @@ class DFRobotDFPlayerMini {
 
   uint8_t readCommand();
   
-  bool begin(Stream& stream, bool isACK = true, bool doReset = true);
+//  bool begin(Stream& stream, bool isACK = true, bool doReset = true);
+  bool begin(UART_HandleTypeDef *huart, bool isACK = true, bool doReset = true);
+
   
   bool waitAvailable(unsigned long duration = 0);
   
-  bool available();
+//  bool available();
   
   uint8_t readType();
   

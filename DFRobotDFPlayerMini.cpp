@@ -5,10 +5,6 @@
  *
  * @copyright	[DFRobot]( http://www.dfrobot.com ), 2016
  * @copyright	GNU Lesser General Public License
- *
- * @author [Angelo](Angelo.qiao@dfrobot.com)
- * @version  V1.0.3
- * @date  2016-12-07
  */
 
 #include "DFRobotDFPlayerMini.h"
@@ -31,12 +27,14 @@ uint16_t DFRobotDFPlayerMini::calculateCheckSum(uint8_t *buffer){
 }
 
 void DFRobotDFPlayerMini::sendStack(){
+/*
   if (_sending[Stack_ACK]) {  //if the ack mode is on wait until the last transmition
     while (_isSending) {
-      delay(0);
+      HAL_Delay(0); //delay(0);
       available();
     }
   }
+  */
 
 #ifdef _DEBUG
   Serial.println();
@@ -47,13 +45,14 @@ void DFRobotDFPlayerMini::sendStack(){
   }
   Serial.println();
 #endif
-  _serial->write(_sending, DFPLAYER_SEND_LENGTH);
-  _timeOutTimer = millis();
+//  _serial->write(_sending, DFPLAYER_SEND_LENGTH);
+  HAL_UART_Transmit(_huart, (uint8_t *)_sending, sizeof(_sending), _timeOutDuration);
+  _timeOutTimer = HAL_GetTick(); //millis();
   _isSending = _sending[Stack_ACK];
   
-  if (!_sending[Stack_ACK]) { //if the ack mode is off wait 10 ms after one transmition.
-    delay(10);
-  }
+//  if (!_sending[Stack_ACK]) { //if the ack mode is off wait 10 ms after one transmition.
+//	  HAL_Delay(10); //delay(10);
+//  }
 }
 
 void DFRobotDFPlayerMini::sendStack(uint8_t command){
@@ -73,6 +72,22 @@ void DFRobotDFPlayerMini::sendStack(uint8_t command, uint8_t argumentHigh, uint8
   sendStack(command, buffer | argumentLow);
 }
 
+# define Start_Byte 0x7E
+# define End_Byte   0xEF
+# define Version    0xFF
+# define Cmd_Len    0x06
+# define Feedback   0x00    //If need for Feedback: 0x01,  No Feedback: 0
+
+void DFRobotDFPlayerMini::Send_cmd (uint8_t cmd, uint8_t Parameter1, uint8_t Parameter2)
+{
+	uint16_t Checksum = Version + Cmd_Len + cmd + Feedback + Parameter1 + Parameter2;
+	Checksum = 0-Checksum;
+
+	uint8_t CmdSequence[10] = { Start_Byte, Version, Cmd_Len, cmd, Feedback, Parameter1, Parameter2, (Checksum>>8)&0x00ff, (Checksum&0x00ff), End_Byte};
+
+	HAL_UART_Transmit(_huart, CmdSequence, 10, HAL_MAX_DELAY);
+}
+
 void DFRobotDFPlayerMini::enableACK(){
   _sending[Stack_ACK] = 0x01;
 }
@@ -81,22 +96,27 @@ void DFRobotDFPlayerMini::disableACK(){
   _sending[Stack_ACK] = 0x00;
 }
 
+/*
 bool DFRobotDFPlayerMini::waitAvailable(unsigned long duration){
-  unsigned long timer = millis();
+  unsigned long timer = HAL_GetTick(); //millis();
   if (!duration) {
     duration = _timeOutDuration;
   }
   while (!available()){
-    if (millis() - timer > duration) {
+    if (HAL_GetTick() - timer > duration) {
       return false;
     }
-    delay(0);
+    HAL_Delay(0); //delay(0);
   }
   return true;
 }
+*/
 
-bool DFRobotDFPlayerMini::begin(Stream &stream, bool isACK, bool doReset){
-  _serial = &stream;
+//bool DFRobotDFPlayerMini::begin(Stream &stream, bool isACK, bool doReset){
+bool DFRobotDFPlayerMini::begin(UART_HandleTypeDef *huart, bool isACK, bool doReset){
+
+//  _serial = &stream;
+  _huart = huart;
   
   if (isACK) {
     enableACK();
@@ -107,8 +127,8 @@ bool DFRobotDFPlayerMini::begin(Stream &stream, bool isACK, bool doReset){
   
   if (doReset) {
     reset();
-    waitAvailable(2000);
-    delay(200);
+    //waitAvailable(2000);
+    HAL_Delay(200); //delay(200);
   }
   else {
     // assume same state as with reset(): online
@@ -225,9 +245,11 @@ bool DFRobotDFPlayerMini::validateStack(){
   return calculateCheckSum(_received) == arrayToUint16(_received+Stack_CheckSum);
 }
 
+/*
 bool DFRobotDFPlayerMini::available(){
-  while (_serial->available()) {
-    delay(0);
+  HAL_UART_Receive(_huart,(uint8_t *)_received, sizeof(_received), _timeOutDuration); //strlen((char*)msg)
+  while (_serial->available()) { // シリアルポートにデータが　まったく到着していなかったら（バッファにあるデータのバイト数が0だったら）
+	HAL_Delay(0); //delay(0);
     if (_receivedIndex == 0) {
       _received[Stack_Header] = _serial->read();
 #ifdef _DEBUG
@@ -281,12 +303,13 @@ bool DFRobotDFPlayerMini::available(){
     }
   }
   
-  if (_isSending && (millis()-_timeOutTimer>=_timeOutDuration)) {
+  if (_isSending && (HAL_GetTick()-_timeOutTimer>=_timeOutDuration)) {
     return handleError(TimeOut);
   }
   
   return _isAvailable;
 }
+*/
 
 void DFRobotDFPlayerMini::next(){
   sendStack(0x01);
@@ -322,7 +345,7 @@ void DFRobotDFPlayerMini::loop(int fileNumber) {
 
 void DFRobotDFPlayerMini::outputDevice(uint8_t device) {
   sendStack(0x09, device);
-  delay(200);
+  HAL_Delay(200); //delay(200);
 }
 
 void DFRobotDFPlayerMini::sleep(){
