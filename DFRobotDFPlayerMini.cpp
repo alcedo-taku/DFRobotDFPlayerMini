@@ -7,7 +7,7 @@
  * @copyright	GNU Lesser General Public License
  */
 
-#include "DFRobotDFPlayerMini.h"
+#include "DFRobotDFPlayerMini.hpp"
 
 void DFRobotDFPlayerMini::setTimeOut(unsigned long timeOutDuration){
   _timeOutDuration = timeOutDuration;
